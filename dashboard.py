@@ -77,6 +77,13 @@ with st.sidebar:
         "Selecciona el conjunto de datos:",
         ("df0", "df1", "df2", "todos") 
     )
+    
+    # Selectbox for time interval selection
+    time_interval = st.selectbox(
+        "Selecciona el intervalo de tiempo (ms):",
+        [50, 75, 100, 150, 200, 300],
+        index=2  # Valor por defecto (100 ms)
+    )
 
 #####################
 # Visualization
@@ -94,8 +101,8 @@ def make_scatterplot(data):
 
     # Ajustes adicionales del gráfico
     fig.update_layout(
-        width=720 * relacion_aspecto,   # Ajustar el ancho del gráfico según la relación de aspecto
-        height=550,                     # Altura fija
+        width=600 * relacion_aspecto,   # Ajustar el ancho del gráfico según la relación de aspecto
+        height=400,                     # Altura fija
         xaxis_title="Timestamps",       # Etiqueta del eje X
         yaxis_title="Neuron IDs",       # Etiqueta del eje Y
         font=dict(size=20),             # Tamaño de la fuente
@@ -109,7 +116,7 @@ def make_scatterplot(data):
     return fig
 
 def make_line_time_series(data, length_interval):
-    bins = range(0, 3000 + length_interval, 100)  # 0 a 3000 ms en intervalos de 100 ms
+    bins = range(0, 3000 + length_interval, length_interval)  # 0 a 3000 ms en intervalos de 100 ms
 
     # Agregamos una nueva columna al DataFrame con las etiquetas de los intervalos
     data.loc[:, 'interval'] = pd.cut(data['timestamps'], bins=bins, labels=False) + 1
@@ -123,10 +130,9 @@ def make_line_time_series(data, length_interval):
         markers=True,
     )
 
-    # Ajustes adicionales del gráfico
     fig.update_layout(
-        width=1000,
-        height=600,
+        width=500,
+        height=400,
         xaxis_title="Interval",
         yaxis_title="Spikes",
         font=dict(size=20),
@@ -150,6 +156,8 @@ def compare_datasets_lineplot(grouped_data, long_interval):
         },
         color_discrete_sequence=custom_colors  # Aplicar los colores personalizados
     )
+    # Centrar el título
+    fig.update_layout(title_x=0.2)
 
     return fig
 
@@ -161,12 +169,14 @@ def compare_datasets_boxplot(grouped_data, long_interval):
         y='spikes',
         title=f'Number of spikes per {long_interval} ms interval with boxplot',
         labels={
-            'dataset_ID': 'Dataset ID',
+            'dataset_ID': 'dataset ID',
             'spikes': 'Number of spikes'
         },
         color='dataset_ID',  # Use dataset_ID for color mapping
         color_discrete_sequence=custom_colors  # Apply the specified colors
     )
+    # Centrar el título
+    fig.update_layout(title_x=0.1)
 
     return fig
 
@@ -198,11 +208,18 @@ def agrupar_datos(length_interval, df0, df1, df2):
 #######################
 # Dashboard Main Panel (Single Column)
 if dataset_choice == "todos":
-    grouped_data = agrupar_datos(100, df_0, df_1, df_2)
-    lineplot = compare_datasets_lineplot(grouped_data, 100)
-    st.plotly_chart(lineplot, use_container_width=True)
-    boxplot = compare_datasets_boxplot(grouped_data, 100)
-    st.plotly_chart(boxplot, use_container_width=True)
+    grouped_data = agrupar_datos(time_interval, df_0, df_1, df_2)
+    
+    # Crear columnas para los gráficos
+    col1, col2 = st.columns([3, 2])  # Primera columna es más grande que la segunda
+    
+    with col1:
+        lineplot = compare_datasets_lineplot(grouped_data, time_interval)
+        st.plotly_chart(lineplot, use_container_width=True)
+
+    with col2:
+        boxplot = compare_datasets_boxplot(grouped_data, time_interval)
+        st.plotly_chart(boxplot, use_container_width=True)
 
 else:
     if dataset_choice == "df0":
@@ -213,8 +230,7 @@ else:
         df = df_2
 
     # Mostrar los gráficos individuales
-    st.markdown(f'#### Datos de la simulación: ({dataset_choice})')
     scatterplot = make_scatterplot(df)
     st.plotly_chart(scatterplot, use_container_width=True)
-    time_series = make_line_time_series(df, 100)
+    time_series = make_line_time_series(df, time_interval)
     st.plotly_chart(time_series, use_container_width=True)
