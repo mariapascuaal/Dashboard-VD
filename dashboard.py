@@ -104,7 +104,14 @@ def make_scatterplot(data):
         data,
         x="timestamps",         # Eje X
         y="neuron_ids",         # Eje Y
+        title=f'Diagrama de dispersión de la simulación {dataset_choice}',
     )
+
+    # Ajustar el tamaño del título
+    fig.update_layout(title_font_size=24)
+
+    # Centrar el título
+    fig.update_layout(title_x=0.3)
 
     # Ajustes adicionales del gráfico
     fig.update_layout(
@@ -134,8 +141,15 @@ def make_line_time_series(data, length_interval):
         df_agrupacion_intervalos,
         x="interval",
         y="spikes",
+        title=f"Serie temporal con {length_interval} ms",
         markers=True,
     )
+
+    # Ajustar el tamaño del título
+    fig.update_layout(title_font_size=24)
+
+    # Centrar el título
+    fig.update_layout(title_x=0.3)
 
     return fig
 
@@ -175,6 +189,13 @@ def time_series_spontaneous_vs_attack(data, dataFLO, length_interval):
         )
     )
 
+        # Añadir el título a la gráfica
+    fig.update_layout(
+        title=f'Serie temporal con ataque vs espontáneo {length_interval} ms',  # Título del gráfico
+        title_font_size = 22,
+        title_x = 0.1
+    )
+
     return fig
 
 def compare_datasets_lineplot(grouped_data, long_interval):
@@ -186,15 +207,19 @@ def compare_datasets_lineplot(grouped_data, long_interval):
         x='interval',
         y='spikes',
         color='dataset_ID',
-        title=f'Number of spikes per {long_interval} ms interval with lineplot',
+        title=f'Serie temporal del caso espontáneo usando {long_interval} ms (lineplot)',
         labels={
             'interval': 'Intervals',
             'spikes': 'Number of spikes',
         },
         color_discrete_sequence=custom_colors  # Aplicar los colores personalizados
     )
+    # Ajustar el tamaño del título
+    fig.update_layout(title_font_size=22)
+
     # Centrar el título
-    fig.update_layout(title_x=0.2)
+    fig.update_layout(title_x=0.1)
+
 
     return fig
 
@@ -204,7 +229,7 @@ def compare_datasets_boxplot(grouped_data, long_interval):
         grouped_data,
         x='dataset_ID',
         y='spikes',
-        title=f'Number of spikes per {long_interval} ms interval with boxplot',
+        title=f'Variabilidad del nº spikes (espontáneo, {long_interval} ms, boxplot)',
         labels={
             'dataset_ID': 'dataset ID',
             'spikes': 'Number of spikes'
@@ -212,8 +237,8 @@ def compare_datasets_boxplot(grouped_data, long_interval):
         color='dataset_ID',  # Use dataset_ID for color mapping
         color_discrete_sequence=custom_colors  # Apply the specified colors
     )
-    # Centrar el título
-    fig.update_layout(title_x=0.1)
+    # Ajustar el tamaño del título
+    fig.update_layout(title_font_size=20)
 
     return fig
 
@@ -244,17 +269,24 @@ def agrupar_datos(length_interval, df0, df1, df2):
 def compare_datasets_boxplot_attack(grouped_data, long_interval):
     # Crear el boxplot usando plotly express
     fig = px.box(grouped_data, x='interval', y='spikes', color='attack',
-                 title=f'{long_interval} ms interval - FLO',
+                 title=f"Comparación espontáneo vs ataque usando {long_interval} ms (boxplot)",
                  labels={'interval': 'Interval', 'spikes': 'Number of spikes'},
                  color_discrete_map={  # Mapa de colores personalizado
                      'Spontaneous': 'blue',  # Azul para spontaneous
                      'FLO': 'orange'         # Naranja para FLO
                  })
 
+    # Ajustar el tamaño del título
+    fig.update_layout(title_font_size=24)
+
+    # Centrar el título
+    fig.update_layout(title_x=0.2)
+
     # Actualizar el tamaño de la fuente de los ejes
     fig.update_layout(
         xaxis_title='Interval',  # Etiqueta del eje X
         yaxis_title='Number of spikes',  # Etiqueta del eje Y
+        height = 600,
         font=dict(size=14)  # Tamaño general de la fuente
     )
     
@@ -269,7 +301,7 @@ def compare_datasets_lineplot_attack(grouped_data, long_interval):
         color="attack",      # Diferenciar líneas por "attack"
         facet_col="dataset_ID",  # Crear subgráficos por "dataset_ID"
         facet_col_wrap=3,    # Agrupar las facetas en filas, 5 gráficos por fila
-        title=f"{long_interval} ms interval",  # Título del gráfico principal
+        title=f"Comparación espontáneo vs ataque usando {long_interval} ms (lineplot)",  # Título del gráfico principal
         labels={"interval": "Interval", "spikes": "Number of Spikes"},  # Etiquetas de los ejes
         height=500,          # Altura del gráfico
         width=1200,          # Anchura del gráfico
@@ -281,6 +313,9 @@ def compare_datasets_lineplot_attack(grouped_data, long_interval):
 
     # Ajustar el tamaño del título
     fig.update_layout(title_font_size=24)
+
+    # Centrar el título
+    fig.update_layout(title_x=0.2)
 
     # Ajustar los títulos de las facetas
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1], font_size=14))  # Personalizar los títulos de faceta
@@ -335,7 +370,7 @@ else:
     scatterplot = make_scatterplot(df)
     st.plotly_chart(scatterplot, use_container_width=True)
 
-        # Crear dos columnas para las dos gráficas time_series y time_series_FLO
+    # Crear dos columnas para las dos gráficas time_series y time_series_FLO
     col1, col2 = st.columns(2)  # Dividimos en dos columnas de igual tamaño
 
     with col1:
