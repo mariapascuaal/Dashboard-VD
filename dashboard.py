@@ -234,3 +234,4 @@ else:
     st.plotly_chart(scatterplot, use_container_width=True)
     time_series = make_line_time_series(df, time_interval)
     st.plotly_chart(time_series, use_container_width=True)
+    
