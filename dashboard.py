@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 #######################
 # Page configuration
@@ -59,13 +60,19 @@ st.markdown("""
 # Data loading
 
 df_0 = pd.read_csv("./csv/spikes_0.csv", delimiter=";")
-df_0 = df_0[["timestamps", "neuron_ids"]]
+df_0 = df_0[["attack", "timestamps", "neuron_ids"]]
+df_FLO_0  = pd.read_csv("./csv/spikes_FLO_0.csv", delimiter=";")
+df_FLO_0 = df_FLO_0[["attack", "timestamps", "neuron_ids"]]
 
 df_1 = pd.read_csv("./csv/spikes_1.csv", delimiter=";")
-df_1 = df_1[["timestamps", "neuron_ids"]]
+df_1 = df_1[["attack","timestamps", "neuron_ids"]]
+df_FLO_1  = pd.read_csv("./csv/spikes_FLO_1.csv", delimiter=";")
+df_FLO_1 = df_FLO_1[["attack", "timestamps", "neuron_ids"]]
 
 df_2 = pd.read_csv("./csv/spikes_2.csv", delimiter=";")
-df_2 = df_2[["timestamps", "neuron_ids"]]
+df_2 = df_2[["attack","timestamps", "neuron_ids"]]
+df_FLO_2  = pd.read_csv("./csv/spikes_FLO_2.csv", delimiter=";")
+df_FLO_2 = df_FLO_2[["attack", "timestamps", "neuron_ids"]]
 
 #######################
 # Sidebar
@@ -130,12 +137,42 @@ def make_line_time_series(data, length_interval):
         markers=True,
     )
 
-    fig.update_layout(
-        width=500,
-        height=400,
-        xaxis_title="Interval",
-        yaxis_title="Spikes",
-        font=dict(size=20),
+    return fig
+
+def time_series_spontaneous_vs_attack(data, dataFLO, length_interval):
+    bins = range(0, 3000 + length_interval, length_interval)  # 0 a 3000 ms en intervalos de length_interval ms
+
+    # Agregar una nueva columna al DataFrame con las etiquetas de los intervalos
+    data.loc[:, 'interval'] = pd.cut(data['timestamps'], bins=bins, labels=False) + 1
+    dataFLO.loc[:, 'interval'] = pd.cut(dataFLO['timestamps'], bins=bins, labels=False) + 1
+
+    # Agrupación de los datos por intervalos
+    df_agrupacion_intervalos = data.groupby('interval').size().reset_index(name='spikes')
+    df_agrupacion_intervalos_FLO = dataFLO.groupby('interval').size().reset_index(name='spikes')
+
+    # Crear el gráfico usando go.Scatter para que ambos tengan nombre
+    fig = go.Figure()
+
+    # Añadir la serie de datos 'spontaneous'
+    fig.add_trace(
+        go.Scatter(
+            x=df_agrupacion_intervalos["interval"],
+            y=df_agrupacion_intervalos["spikes"],
+            mode='lines+markers',
+            name='Spontaneous',  # Etiqueta para la leyenda
+            line=dict(color='blue')  # Color de la línea
+        )
+    )
+
+    # Añadir la serie de datos 'FLO attack'
+    fig.add_trace(
+        go.Scatter(
+            x=df_agrupacion_intervalos_FLO["interval"],
+            y=df_agrupacion_intervalos_FLO["spikes"],
+            mode='lines+markers',
+            name='FLO attack',  # Etiqueta para la leyenda
+            line=dict(color='orange')  # Color de la línea
+        )
     )
 
     return fig
@@ -201,37 +238,111 @@ def agrupar_datos(length_interval, df0, df1, df2):
         df = add_interval_column(df, length_interval)
       
     df_agrupacion_intervalos = pd.concat(dataframes, ignore_index=True)
-    df_agrupacion_intervalos = df_agrupacion_intervalos.groupby(['interval', 'dataset_ID']).size().reset_index(name='spikes')
+    df_agrupacion_intervalos = df_agrupacion_intervalos.groupby(['attack', 'interval', 'dataset_ID']).size().reset_index(name='spikes')
     return df_agrupacion_intervalos
 
+def compare_datasets_boxplot_attack(grouped_data, long_interval):
+    # Crear el boxplot usando plotly express
+    fig = px.box(grouped_data, x='interval', y='spikes', color='attack',
+                 title=f'{long_interval} ms interval - FLO',
+                 labels={'interval': 'Interval', 'spikes': 'Number of spikes'},
+                 color_discrete_map={  # Mapa de colores personalizado
+                     'Spontaneous': 'blue',  # Azul para spontaneous
+                     'FLO': 'orange'         # Naranja para FLO
+                 })
+
+    # Actualizar el tamaño de la fuente de los ejes
+    fig.update_layout(
+        xaxis_title='Interval',  # Etiqueta del eje X
+        yaxis_title='Number of spikes',  # Etiqueta del eje Y
+        font=dict(size=14)  # Tamaño general de la fuente
+    )
+    
+    return fig
+
+def compare_datasets_lineplot_attack(grouped_data, long_interval):
+    # Crear gráfico con Plotly Express
+    fig = px.line(
+        grouped_data,
+        x="interval",        # Eje X
+        y="spikes",          # Eje Y
+        color="attack",      # Diferenciar líneas por "attack"
+        facet_col="dataset_ID",  # Crear subgráficos por "dataset_ID"
+        facet_col_wrap=3,    # Agrupar las facetas en filas, 5 gráficos por fila
+        title=f"{long_interval} ms interval",  # Título del gráfico principal
+        labels={"interval": "Interval", "spikes": "Number of Spikes"},  # Etiquetas de los ejes
+        height=500,          # Altura del gráfico
+        width=1200,          # Anchura del gráfico
+        color_discrete_map={  # Mapa de colores personalizado
+            'Spontaneous': 'blue',  # Azul para spontaneous
+            'FLO': 'orange'         # Naranja para FLO
+        }
+    )
+
+    # Ajustar el tamaño del título
+    fig.update_layout(title_font_size=24)
+
+    # Ajustar los títulos de las facetas
+    fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[-1], font_size=14))  # Personalizar los títulos de faceta
+    
+    # Devolver la figura
+    return fig
+
+
+
+grouped_data = agrupar_datos(time_interval, df_0, df_1, df_2)
+grouped_data_FLO = agrupar_datos(time_interval, df_FLO_0, df_FLO_1, df_FLO_2)
+combined_data = pd.concat([grouped_data, grouped_data_FLO], ignore_index=True)
 
 #######################
 # Dashboard Main Panel (Single Column)
 if dataset_choice == "todos":
-    grouped_data = agrupar_datos(time_interval, df_0, df_1, df_2)
-    
     # Crear columnas para los gráficos
     col1, col2 = st.columns([3, 2])  # Primera columna es más grande que la segunda
     
+    # Graficar el lineplot en col1
     with col1:
-        lineplot = compare_datasets_lineplot(grouped_data, time_interval)
+        lineplot = compare_datasets_lineplot(grouped_data, time_interval)  # Llamada correcta a la función
         st.plotly_chart(lineplot, use_container_width=True)
 
+    # Graficar el boxplot en col2
     with col2:
-        boxplot = compare_datasets_boxplot(grouped_data, time_interval)
+        boxplot = compare_datasets_boxplot(grouped_data, time_interval)  # Llamada correcta a la función
         st.plotly_chart(boxplot, use_container_width=True)
+
+    # Ahora mostrar el gráfico de compare_boxplot que debe ocupar ambas columnas
+    compare_lineplot = compare_datasets_lineplot_attack(combined_data, time_interval)  # Llamada correcta a la función
+    st.plotly_chart(compare_lineplot, use_container_width=True)  # Este gráfico ocupará las dos columnas anteriores
+
+    # Ahora mostrar el gráfico de compare_boxplot que debe ocupar ambas columnas
+    compare_boxplot = compare_datasets_boxplot_attack(combined_data, time_interval)  # Llamada correcta a la función
+    st.plotly_chart(compare_boxplot, use_container_width=True)  # Este gráfico ocupará las dos columnas anteriores
+
+
 
 else:
     if dataset_choice == "df0":
         df = df_0
+        dfFLO = df_FLO_0
     elif dataset_choice == "df1":
         df = df_1
+        dfFLO = df_FLO_1
     else:
         df = df_2
+        dfFLO = df_FLO_2
 
     # Mostrar los gráficos individuales
     scatterplot = make_scatterplot(df)
     st.plotly_chart(scatterplot, use_container_width=True)
-    time_series = make_line_time_series(df, time_interval)
-    st.plotly_chart(time_series, use_container_width=True)
+
+        # Crear dos columnas para las dos gráficas time_series y time_series_FLO
+    col1, col2 = st.columns(2)  # Dividimos en dos columnas de igual tamaño
+
+    with col1:
+        time_series = make_line_time_series(df, time_interval)
+        st.plotly_chart(time_series, use_container_width=True)
+
+    with col2:
+        time_series_FLO = time_series_spontaneous_vs_attack(df, dfFLO, time_interval)
+        st.plotly_chart(time_series_FLO, use_container_width=True)
     
